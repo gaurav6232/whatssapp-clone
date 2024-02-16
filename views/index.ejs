@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bootstrap demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <style>
+    * {
+      margin: 0%;
+      padding: 0%;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">Modal title</h5>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="findUserForm" action="/findUser" class="d-flex">
+            <input id="findUserQuery" class="form-control" type="text" name="username" placeholder="Enter username">
+            <input type="submit" class="btn btn-success">
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="main" class="w-100 h-100 d-flex bg-dark text-light" style="height: 100vh; overflow: hidden;">
+    <div class="left h-100 col-3 border-end">
+      <div class="usernav">
+        <div class="user d-flex align-items-center p-2 gap-2 border-bottom">
+          <img style="height: 4vw; width: 4vw; object-fit: cover; border-radius: 50%;" src="<%= user.pic%>" alt="">
+          <h4 class="m-0"><%= user.username %></h4>
+          <i data-bs-toggle="modal" data-bs-target="#exampleModalCenter" class="ri-add-fill" style="margin-left: auto; cursor: pointer;"></i>
+        </div>
+      </div>
+      <div class="chats p-2">
+        <h4 style="font-size: 4vw;">Chats</h4>
+
+
+      </div>
+    </div>
+    <div class="right col-9 h-100">
+     
+    
+      <!-- Add a separate button or trigger to submit the form -->
+       
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js" integrity="sha512-WrdC3CE9vf1nBf58JHepuWT4x24uTacky9fuzw2g/3L9JkihgwZ6Cfv+JGTtNyosOhEmttMtEZ6H3qJWfI7gIQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- <script>
+    function submitFormOnInput() {
+        // Get the form element
+        var form = document.getElementById("uploadForm");
+
+        // Submit the form
+        form.submit();
+    }
+
+    function handleAttachmentClick() {
+        // Your attachment click logic here
+        console.log("Attachment clicked");
+    }
+</script> -->
+
+
+  <script>
+      function addChat(username, image) {
+        document.querySelector('.chats').innerHTML +=`
+        <div onClick="openChat('${username}','${image}')" class="caht d-flex gap-2 bg-secondary align-items-center p-2 rounded-2" style="cursor: pointer;">
+            <img style="height: 4vw; width: 4vw; border-radius: 50%; object-fit: cover;" src="${image}" alt="">
+            <p class="m-0">${username}</p>
+          </div>`
+      }
+// Call the renderLeftChat function on page load to display any saved user chats
+ 
+
+    async function openChat(username, image) {
+      oppositeUser = username;
+      try {
+        const userResponse = await axios.post('/getUserInfo', { username });
+        const { online: userOnline, lastSeen: userLastSeen } = userResponse.data.userInfo;
+
+        const oppositeUserResponse = await axios.post('/getUserInfo', { username });
+        const { online: oppositeOnline, lastSeen: oppositeLastSeen } = oppositeUserResponse.data.userInfo;
+
+        let userInfo = '';
+        if (oppositeOnline) {
+          userInfo = 'Online';
+        } else if (oppositeLastSeen) {
+          const lastSeenTime = new Date(oppositeLastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          userInfo = `Last seen: ${lastSeenTime}`;
+        }
+
+        var chats = await axios.post('/findChats', { oppositeUser });
+        chats = chats.data.chats;
+
+        var clutter = '';
+
+        chats.forEach(chat => {
+          if (chat.fromUser === oppositeUser) {
+            clutter += `<div class="msg incomingMsg bg-light text-dark rounded-3" style="width: fit-content; padding: 0.2rem 0.6;">
+                    ${chat.data}
+                </div>`;
+          } else {
+            clutter += `<div class="msg outgoingMsg ms-auto bg-light text-dark rounded-3" style="width: fit-content; padding: 0.2rem 0.6rem;">
+                    ${chat.data}
+                </div>`;
+          }
+        });
+         
+        document.querySelector('.right').innerHTML = `
+        <div style="height: 4.5rem;" class="nav p-2 d-flex gap-2 align-items-center border-bottom">
+          <img style="height: 4vw;width: 4vw; border-radius: 50%; object-fit: cover;" src="${image}" alt="">
+          <div>
+            <p class="m-0">${username}</p>
+            ${userInfo ? `<p class="m-0">${userInfo}</p>` : ''}
+          </div>
+        </div>
+        <div style="height: calc(100% - 7rem);overflow-y: auto;" class="conversationArea w-100 bg-secondary p-1">
+          ${clutter}
+        </div>
+        <div id="option" style="display: flex; justify-content: space-between; padding: 4px 5px;">
+          <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+        <div class="someContainer" style="width: 10vw; background-color: red; justify-content: space-around;margin-top: -1px; display: flex;">
+            <i class="ri-emotion-normal-line" style="font-size: 30px;z-index: 999;"></i>
+            <i id="attachment" class="ri-attachment-2" style="font-size: 30px; cursor: pointer;" onclick="fileInput"></i>
+            <input type="file" id="fileInput" name="fileInput" style="display: none;">
+            
+        </div>
+    </form>
+          <input onchange="sendMessage()" style="height: 2.4rem; width: 85%;" type="text" placeholder="write message">
+          <div id="sendopoop" style="width: 5%; background-color: red; display: flex; justify-content: center; margin-top: -1px; cursor: pointer;">
+            <i id="iconsend" class="ri-send-plane-fill" style="font-size: 30px;"></i>
+          </div>
+        </div>
+
+        
+
+        
+      `;
+
+  
+ 
+        
+       } catch (error) {
+        console.error('Error opening chat:', error);
+      }
+    }
+
+  
+// // ......................................
+// document.addEventListener('click', function (event) {
+//     if (event.target.id === 'attachment') {
+//         document.querySelector('#fileInput').click();
+//     }
+// });
+
+document.addEventListener('change', function (event) {
+    if (event.target.id === 'fileInput') {
+        submitFormOnFileChange();
+    }
+});
+
+function submitFormOnFileChange() {
+    var form = document.getElementById("uploadForm");
+    var formData = new FormData(form);
+
+    // Handle form submission using AJAX or fetch API
+    // Example using fetch:
+    fetch(form.action, {
+        method: form.method,
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Form submitted successfully:', data);
+    })
+    .catch(error => {
+        console.error('Form submission failed:', error);
+    });
+}
+
+ 
+
+// ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+    function retrieveSavedChat() {
+  const savedChat = localStorage.getItem('currentChat');
+  if (savedChat) {
+    const { username, image } = JSON.parse(savedChat);
+    openChat(username, image);
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Add event listeners after the DOM is fully loaded
+    var formInRight = document.getElementById('uploadForm');
+
+    function submitFormOnFileChange() {
+        // Trigger form submission
+        formInRight.submit();
+    }
+
+    function handleAttachmentClick() {
+        // Your attachment click logic here
+        console.log("Attachment clicked");
+    }
+
+    function sendMessage() {
+        // Your sendMessage logic here
+        console.log("Sending message");
+    }
+
+    // Attach event listeners to elements
+    document.getElementById('fileInput').addEventListener('change', submitFormOnFileChange);
+});
+
+// Call the retrieveSavedChat function on page load
+document.addEventListener('DOMContentLoaded', retrieveSavedChat);
+
+    // function handleAttachmentClick() {
+    //   document.querySelector('#fileInput').click();
+    // }
+
+    var form = document.querySelector('#findUserForm');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      let query = document.querySelector('#findUserQuery').value;
+      try {
+        var response = await axios.post('/findUser', {
+          username: query
+        });
+      } catch (err) {
+        alert('user not found');
+      }
+
+      var findUser = response.data.user;
+      if (findUser) {
+        addChat(findUser.username, findUser.pic);
+        var genericModalEl = document.getElementById('exampleModalCenter');
+        var modal = bootstrap.Modal.getInstance(genericModalEl);
+        modal.hide();
+      }
+    });
+
+    function sendMessage() {
+      var msg = event.target.value;
+      document.querySelector('.conversationArea').innerHTML += `<div class="msg outGoingMsg ms-auto bg-light text-dark rounded-3" style="width: fit-content; padding: 0.2rem 0.6;">
+               ${msg}
+              </div>`;
+      var payLoad = {
+        msg,
+        toUser: oppositeUser,
+        fromUser: username
+      };
+      socket.emit('newmsg', payLoad);
+      console.log(payLoad);
+      document.querySelector('.conversationArea').scrollTo(0, document.querySelector('.conversationArea').getBoundingClientRect().bottom);
+      event.target.value = '';
+    }
+
+    document.addEventListener('click', function (event) {
+      // Check if the clicked element is the attachment icon
+      if (event.target.id === 'attachment') {
+        document.querySelector('#fileInput').click();
+      }
+    });
+
+
+
+
+    var username = '<%= user.username %>';
+    var socket = io();
+    socket.emit('userConnected', {
+      username
+    });
+
+    socket.on('msg', msg => {
+      if (msg.NewChat)
+        addChat(msg.fromUser, msg.fromUserPic);
+      else {
+        if (msg.fromUser == oppositeUser) {
+          document.querySelector('.conversationArea').innerHTML += `<div class="msg incomingMsg bg-light text-dark rounded-3" style="width: fit-content; padding: 0.2rem 0.6;">
+               ${msg.msg}
+              </div>`;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
